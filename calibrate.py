@@ -231,7 +231,7 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
     printNumpyWithIndent(cam_proj_tvec, '    ')
     print()
 
-    fs = cv2.FileStorage('calibration_result.xml', cv2.FILE_STORAGE_WRITE)
+    fs = cv2.FileStorage('calibration_result.json', cv2.FILE_STORAGE_WRITE)
     fs.write('img_shape', cam_shape)
     fs.write('rms', ret)
     fs.write('cam_int', cam_int)
