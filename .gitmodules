@@ -1,0 +1,3 @@
+[submodule "fullscreen"]
+	path = fullscreen
+	url = https://github.com/elerac/fullscreen.git

@@ -1,0 +1,5 @@
+graycode_pattern/
+capture_*/
+.vscode/
+
+*.pyc
