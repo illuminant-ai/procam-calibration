@@ -106,7 +106,7 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
     graycode.setWhiteThreshold(white_thr)
 
     cam_shape = cv2.imread(gc_fname_lists[0][0], cv2.IMREAD_GRAYSCALE).shape
-    patch_size_half = int(np.ceil(cam_shape[1] / 180))
+    patch_size_half = int(np.ceil(cam_shape[1] / 40))
     print('  patch size :', patch_size_half * 2 + 1)
 
     cnt = 0
@@ -142,8 +142,8 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
         proj_objps = []
         proj_corners = []
         cam_corners2 = []
-        viz_cam_points = cv2.cvtColor(black_img, cv2.COLOR_GRAY2RGB)
-        viz_pro_points = cv2.cvtColor(black_img, cv2.COLOR_GRAY2RGB)
+        viz_cam_points = cv2.cvtColor(white_img, cv2.COLOR_GRAY2RGB)
+        viz_pro_points = cv2.cvtColor(white_img, cv2.COLOR_GRAY2RGB)
         for corner, objp in zip(cam_corners, objps):
             c_x = int(round(corner[0][0]))
             c_y = int(round(corner[0][1]))
