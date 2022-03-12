@@ -62,7 +62,7 @@ def main():
     # imlist = imlist[VIDEO_BUFFER_LEN:]
 
     # Create new capture directory
-    dirnames = sorted(glob.glob('./capture_*'))
+    dirnames = sorted(glob.glob('./capture_*'), key = lambda x: int(x.split('_')[1]))
     if len(dirnames) == 0:
         most_recent_capture = "./capture_-1"
     else:

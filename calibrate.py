@@ -109,6 +109,7 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
     patch_size_half = int(np.ceil(cam_shape[1] / 180))
     print('  patch size :', patch_size_half * 2 + 1)
 
+    cnt = 0
     cam_corners_list = []
     cam_objps_list = []
     cam_corners_list2 = []
@@ -141,7 +142,8 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
         proj_objps = []
         proj_corners = []
         cam_corners2 = []
-        # viz_proj_points = np.zeros(proj_shape, np.uint8)
+        viz_cam_points = cv2.cvtColor(black_img, cv2.COLOR_GRAY2RGB)
+        viz_pro_points = cv2.cvtColor(black_img, cv2.COLOR_GRAY2RGB)
         for corner, objp in zip(cam_corners, objps):
             c_x = int(round(corner[0][0]))
             c_y = int(round(corner[0][1]))
@@ -160,7 +162,7 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
             if len(src_points) < patch_size_half**2:
                 print(
                     '    Warning : corner', c_x, c_y,
-                    'was skiped because decoded pixels were too few (check your images and threasholds)')
+                    'was skipped because decoded pixels were too few (check your images and threasholds)')
                 continue
             h_mat, inliers = cv2.findHomography(
                 np.array(src_points), np.array(dst_points))
@@ -169,18 +171,22 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
             proj_objps.append(objp)
             proj_corners.append([point_pix])
             cam_corners2.append(corner)
-            # viz_proj_points[int(round(point_pix[1])),
-            #                 int(round(point_pix[0]))] = 255
         if len(proj_corners) < 3:
-            print('Error : too few corners were found in \'' +
-                  dname + '\' (less than 3)')
+            print('Error : too few corners were found in \'' + dname + '\' (less than 3)')
             return None
         proj_objps_list.append(np.float32(proj_objps))
         proj_corners_list.append(np.float32(proj_corners))
         cam_corners_list2.append(np.float32(cam_corners2))
-        # cv2.imwrite('visualize_corners_projector_' +
-        #             str(cnt) + '.png', viz_proj_points)
-        # cnt += 1
+        viz_pro_points = cv2.warpPerspective(viz_pro_points, h_mat, dsize=(1920, 1080))
+        cv2.drawChessboardCorners(viz_cam_points, (9, 6), cam_corners, True)
+        cv2.drawChessboardCorners(viz_pro_points, (9, 6), np.float32(proj_corners), True)
+        cv2.imwrite('viz_cam_corners_' + str(cnt) + '.png', viz_cam_points)
+        cv2.imwrite('viz_pro_corners_' + str(cnt) + '.png', viz_pro_points)
+        cam_rms, ci, cd, _, _ = cv2.calibrateCamera([objps], [cam_corners], cam_shape, None, None, None, None)
+        pro_rms, pi, pd, _, _ = cv2.calibrateCamera([np.float32(proj_objps)], [np.float32(proj_corners)], proj_shape, None, None, None, None)
+        ste_rms, _, _, _, _, _, _, E, F = cv2.stereoCalibrate([objps], [cam_corners], [np.float32(proj_corners)], ci, cd, pi, pd, None)
+        print("Image: ", cnt, " Camera RMS:", cam_rms, " Proj RMS:", pro_rms, " Stereo RMS:", ste_rms)
+        cnt += 1
 
     print('Initial solution of camera\'s intrinsic parameters')
     cam_rvecs = []
