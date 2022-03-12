@@ -106,7 +106,7 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
     graycode.setWhiteThreshold(white_thr)
 
     cam_shape = cv2.imread(gc_fname_lists[0][0], cv2.IMREAD_GRAYSCALE).shape
-    patch_size_half = int(np.ceil(cam_shape[1] / 40))
+    patch_size_half = int(np.ceil(cam_shape[1] / 15))
     print('  patch size :', patch_size_half * 2 + 1)
 
     cnt = 0
@@ -182,19 +182,17 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
         cv2.drawChessboardCorners(viz_pro_points, (9, 6), np.float32(proj_corners), True)
         cv2.imwrite('viz_cam_corners_' + str(cnt) + '.png', viz_cam_points)
         cv2.imwrite('viz_pro_corners_' + str(cnt) + '.png', viz_pro_points)
-        cam_rms, ci, cd, _, _ = cv2.calibrateCamera([objps], [cam_corners], cam_shape, None, None, None, None)
-        pro_rms, pi, pd, _, _ = cv2.calibrateCamera([np.float32(proj_objps)], [np.float32(proj_corners)], proj_shape, None, None, None, None)
-        ste_rms, _, _, _, _, _, _, E, F = cv2.stereoCalibrate([objps], [cam_corners], [np.float32(proj_corners)], ci, cd, pi, pd, None)
-        print("Image: ", cnt, " Camera RMS:", cam_rms, " Proj RMS:", pro_rms, " Stereo RMS:", ste_rms)
         cnt += 1
 
     print('Initial solution of camera\'s intrinsic parameters')
     cam_rvecs = []
     cam_tvecs = []
     if(camP is None):
-        ret, cam_int, cam_dist, cam_rvecs, cam_tvecs = cv2.calibrateCamera(
-            cam_objps_list, cam_corners_list, cam_shape, None, None, None, None)
+        cam_flags = cv2.CALIB_FIX_K1 | cv2.CALIB_FIX_K2| cv2.CALIB_FIX_K3 | cv2.CALIB_ZERO_TANGENT_DIST | cv2.CALIB_FIX_ASPECT_RATIO | cv2.CALIB_FIX_PRINCIPAL_POINT
+        ret, cam_int, cam_dist, cam_rvecs, cam_tvecs, _, _, cam_per_view_errors = cv2.calibrateCameraExtended(cam_objps_list, cam_corners_list, (1920, 1080), None, None, flags=cam_flags)
+        print('Camera Shape: ', cam_shape)
         print('  RMS :', ret)
+        print('  RMS Per View:', cam_per_view_errors)
     else:
         for objp, corners in zip(cam_objps_list, cam_corners_list):
             ret, cam_rvec, cam_tvec = cv2.solvePnP(objp, corners, camP, camD) 
@@ -210,9 +208,10 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
     print()
 
     print('Initial solution of projector\'s parameters')
-    ret, proj_int, proj_dist, proj_rvecs, proj_tvecs = cv2.calibrateCamera(
-        proj_objps_list, proj_corners_list, proj_shape, None, None, None, None)
+    pro_flags = cv2.CALIB_FIX_K1 | cv2.CALIB_FIX_K2| cv2.CALIB_FIX_K3 | cv2.CALIB_ZERO_TANGENT_DIST | cv2.CALIB_FIX_ASPECT_RATIO | cv2.CALIB_FIX_PRINCIPAL_POINT
+    ret, proj_int, proj_dist, proj_rvecs, proj_tvecs, _, _, pro_per_view_errors= cv2.calibrateCameraExtended(proj_objps_list, proj_corners_list, (1920, 1080), None, None, flags=pro_flags)
     print('  RMS :', ret)
+    print('  RMS :', pro_per_view_errors)
     print('  Intrinsic parameters :')
     printNumpyWithIndent(proj_int, '    ')
     print('  Distortion parameters :')
@@ -220,9 +219,10 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
     print()
 
     print('=== Result ===')
-    ret, cam_int, cam_dist, proj_int, proj_dist, cam_proj_rmat, cam_proj_tvec, E, F = cv2.stereoCalibrate(
-        proj_objps_list, cam_corners_list2, proj_corners_list, cam_int, cam_dist, proj_int, proj_dist, None)
+    ste_flags = cv2.CALIB_FIX_INTRINSIC | cv2.CALIB_USE_INTRINSIC_GUESS
+    ret, cam_int, cam_dist, proj_int, proj_dist, cam_proj_rmat, cam_proj_tvec, E, F, ste_per_view_errors = cv2.stereoCalibrateExtended(proj_objps_list, cam_corners_list2, proj_corners_list, cam_int, cam_dist, proj_int, proj_dist, None, None, None, flags=ste_flags)
     print('  RMS :', ret)
+    print('  RMS :', ste_per_view_errors)
     print('  Camera intrinsic parameters :')
     printNumpyWithIndent(cam_int, '    ')
     print('  Camera distortion parameters :')
