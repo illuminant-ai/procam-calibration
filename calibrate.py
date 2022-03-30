@@ -109,13 +109,13 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
     patch_size_half = int(np.ceil(cam_shape[1] / 15))
     print('  patch size :', patch_size_half * 2 + 1)
 
-    cnt = 0
     cam_corners_list = []
     cam_objps_list = []
     cam_corners_list2 = []
     proj_objps_list = []
     proj_corners_list = []
     for dname, gc_filenames in zip(dirnames, gc_fname_lists):
+        dname_index = dname.split("_")[1]
         print('  checking \'' + dname + '\'')
         if len(gc_filenames) != graycode.getNumberOfPatternImages() + 2:
             print('Error : invalid number of images in \'' + dname + '\'')
@@ -131,7 +131,7 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
         black_img = imgs.pop()
         white_img = imgs.pop()
 
-        res, cam_corners = cv2.findChessboardCorners(white_img, chess_shape)
+        res, cam_corners = cv2.findChessboardCorners(black_img, chess_shape)
         if not res:
             print('Error : chessboard was not found in \'' +
                   gc_filenames[-2] + '\'')
@@ -144,6 +144,15 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
         cam_corners2 = []
         viz_cam_points = cv2.cvtColor(white_img, cv2.COLOR_GRAY2RGB)
         viz_pro_points = cv2.cvtColor(white_img, cv2.COLOR_GRAY2RGB)
+        image = np.zeros((cam_shape[0], cam_shape[1], 3), dtype=np.uint16)
+        for row in range(0, cam_shape[0]):
+            for col in range(0, cam_shape[1]):
+                ret, pp = graycode.getProjPixel(imgs, col, row)
+                image[row, col, 0] = (pp[0] / cam_shape[1]) * 2**16
+                image[row, col, 1] = (pp[1] / cam_shape[0]) * 2**16
+                image[row, col, 2] = (black_img[row, col] / 255) * 2**16
+        cv2.imwrite('viz_pro_gc_' + str(dname_index) + '.png', image)
+
         for corner, objp in zip(cam_corners, objps):
             c_x = int(round(corner[0][0]))
             c_y = int(round(corner[0][1]))
@@ -153,6 +162,8 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
                 for dy in range(-patch_size_half, patch_size_half + 1):
                     x = c_x + dx
                     y = c_y + dy
+                    if (y < 0 or y >= cam_shape[0] or x < 0 or x >= cam_shape[1]):
+                        continue
                     if int(white_img[y, x]) - int(black_img[y, x]) <= black_thr:
                         continue
                     err, proj_pix = graycode.getProjPixel(imgs, x, y)
@@ -162,7 +173,7 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
             if len(src_points) < patch_size_half**2:
                 print(
                     '    Warning : corner', c_x, c_y,
-                    'was skipped because decoded pixels were too few (check your images and threasholds)')
+                    'was skipped because decoded pixels were too few (check your images and thresholds)')
                 continue
             h_mat, inliers = cv2.findHomography(
                 np.array(src_points), np.array(dst_points))
@@ -180,9 +191,8 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
         viz_pro_points = cv2.warpPerspective(viz_pro_points, h_mat, dsize=(1920, 1080))
         cv2.drawChessboardCorners(viz_cam_points, (9, 6), cam_corners, True)
         cv2.drawChessboardCorners(viz_pro_points, (9, 6), np.float32(proj_corners), True)
-        cv2.imwrite('viz_cam_corners_' + str(cnt) + '.png', viz_cam_points)
-        cv2.imwrite('viz_pro_corners_' + str(cnt) + '.png', viz_pro_points)
-        cnt += 1
+        cv2.imwrite('viz_cam_corners_' + str(dname_index) + '.png', viz_cam_points)
+        cv2.imwrite('viz_pro_corners_' + str(dname_index) + '.png', viz_pro_points)
 
     print('Initial solution of camera\'s intrinsic parameters')
     cam_rvecs = []
@@ -208,7 +218,10 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
     print()
 
     print('Initial solution of projector\'s parameters')
-    pro_flags = cv2.CALIB_FIX_K1 | cv2.CALIB_FIX_K2| cv2.CALIB_FIX_K3 | cv2.CALIB_ZERO_TANGENT_DIST | cv2.CALIB_FIX_ASPECT_RATIO | cv2.CALIB_FIX_PRINCIPAL_POINT
+    # pro_flags = cv2.CALIB_FIX_K1 | cv2.CALIB_FIX_K2| cv2.CALIB_FIX_K3 | cv2.CALIB_ZERO_TANGENT_DIST | cv2.CALIB_FIX_ASPECT_RATIO | cv2.CALIB_FIX_PRINCIPAL_POINT
+    pro_flags = cv2.CALIB_FIX_K1 | cv2.CALIB_FIX_K2| cv2.CALIB_FIX_K3 | cv2.CALIB_ZERO_TANGENT_DIST | cv2.CALIB_FIX_ASPECT_RATIO
+    # pro_flags = cv2.CALIB_FIX_K1 | cv2.CALIB_FIX_K2| cv2.CALIB_FIX_K3 | cv2.CALIB_ZERO_TANGENT_DIST | cv2.CALIB_FIX_PRINCIPAL_POINT
+    # pro_flags = cv2.CALIB_FIX_K1 | cv2.CALIB_FIX_K2| cv2.CALIB_FIX_K3 | cv2.CALIB_ZERO_TANGENT_DIST
     ret, proj_int, proj_dist, proj_rvecs, proj_tvecs, _, _, pro_per_view_errors= cv2.calibrateCameraExtended(proj_objps_list, proj_corners_list, (1920, 1080), None, None, flags=pro_flags)
     print('  RMS :', ret)
     print('  RMS :', pro_per_view_errors)
