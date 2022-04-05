@@ -52,7 +52,7 @@ def main():
     #     images.append(images[-1])
 
     # Capture
-    screen = fs.FullScreen('cv2', screen_id=2)
+    screen = fs.FullScreen('cv2', screen_id=1)
     black = np.zeros(CAMERA_RESOLUTION)
     screen.imshow(black)
     flush_cap(cap)

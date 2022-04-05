@@ -189,8 +189,9 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
         proj_corners_list.append(np.float32(proj_corners))
         cam_corners_list2.append(np.float32(cam_corners2))
         viz_pro_points = cv2.warpPerspective(viz_pro_points, h_mat, dsize=(1920, 1080))
-        cv2.drawChessboardCorners(viz_cam_points, (9, 6), cam_corners, True)
-        cv2.drawChessboardCorners(viz_pro_points, (9, 6), np.float32(proj_corners), True)
+        print(cam_corners.shape)
+        cv2.drawChessboardCorners(viz_cam_points, chess_shape, cam_corners, True)
+        cv2.drawChessboardCorners(viz_pro_points, chess_shape, np.float32(proj_corners), True)
         cv2.imwrite('viz_cam_corners_' + str(dname_index) + '.png', viz_cam_points)
         cv2.imwrite('viz_pro_corners_' + str(dname_index) + '.png', viz_pro_points)
 
