@@ -7,7 +7,7 @@ This repository provides python scripts to calibrate projector-camera system usi
 * Python
     * Python 3 is recommended
 * OpenCV
-    * `python -m pip install opencv-python opencv-contrib-python===4.4.0.46`
+    * `python -m pip install opencv-python opencv-contrib-python==4.4.0.46`
 * Printed chessboard
     * You can find PDF [here](http://opencv.jp/sample/pics/chesspattern_7x10.pdf)
 

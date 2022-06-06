@@ -283,7 +283,7 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
             # Use the local homography to find the coordinates of the corner in the
             # projector image plane.
             point = h_mat@np.array([corner[0][0], corner[0][1], 1]).transpose()     ## .transpose() is unnecessary
-            point_pix = point[0:2]/point[2]         # PROBLEM: Re-transform into non-homogenous coordinates?
+            point_pix = point[0:2]/point[2]         # Convert back to inhomogenous coordinates
             proj_objps.append(objp)
             proj_corners.append([point_pix])        # complies with the shape of cam_corners (n x 1 x 2)
 
