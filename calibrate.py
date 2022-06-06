@@ -196,6 +196,10 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
         cam_corners2 = []
         viz_cam_points = cv2.cvtColor(white_img, cv2.COLOR_GRAY2RGB)
 
+        # Record the decoded projector pixels (using getProjPixel) for each camera pixel
+        # for later calculation of global homography.
+        proj_pixels, camera_pixels = [], []
+
         # Map each camera pixel to a projector pixel using the projected structured light
         # patterns (which are converted to grayscale). The resulting image is used ONLY
         # for visualization purposes. This visualization allows us to see the projector
@@ -209,7 +213,7 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
         image = np.zeros((cam_shape[0], cam_shape[1], 3), dtype=np.uint16)
         for row in range(0, cam_shape[0]):
             for col in range(0, cam_shape[1]):
-                ret, pp = graycode.getProjPixel(projected_graycodes, col, row)
+                err, pp = graycode.getProjPixel(projected_graycodes, col, row)
                 # Normalize the projector pixels with the camera dimensions, because we
                 # are thinking of the projector dimensions and the camera dimensions as
                 # being the same in this context. In an ideal setting, there is a bijective
@@ -219,6 +223,13 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
                 image[row, col, 1] = (pp[1] / cam_shape[0]) * 2**16
                 # Store the intensity of the grayscale pixel in the 3rd entry.
                 image[row, col, 2] = (black_img[row, col] / 255) * 2**16
+                # Store the mapping for later use
+                if not err:
+                    # The reason for multiplication is explained later in calculation of
+                    # local homographies.
+                    proj_pixels.append(gc_step * np.array(pp))
+                    camera_pixels.append((col, row))
+
         cv2.imwrite('viz_pro_gc_' + str(dname_index) + '.png', image)
 
         # Loop through each inner chessboard corner in terms of its coordinate in the
@@ -269,7 +280,7 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
                     err, proj_pix = graycode.getProjPixel(projected_graycodes, x, y)
                     if not err:
                         src_points.append((x, y))
-                        dst_points.append(gc_step*np.array(proj_pix))
+                        dst_points.append(gc_step * np.array(proj_pix))
 
             # If the number of decodable pixels is less than a quarter the area of the
             # patch size, we skip further processing on this corner.
@@ -308,6 +319,10 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
         proj_corners_list.append(np.float32(proj_corners))
         cam_corners_list2.append(np.float32(cam_corners2))
 
+        # Find the global homography matrix using the camera to projector pixel mapping
+        # for the entire image, found earlier.
+        global_h_mat, _ = cv2.findHomography(np.array(camera_pixels), np.array(proj_pixels))
+
         # Create the image plane of the projector from that of the camera using a
         # homography. As Phil correctly mentioned, this homography matrix used
         # is the most recent local homography computed. Since the transformation is
@@ -315,7 +330,7 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
         # appropriate and should produce better results. This use of a local homography
         # matrix for a global transformation is likely responsible for the inaccurate
         # corner markings in the viz_pro_corners_* files.       ## FIX
-        viz_pro_points = cv2.warpPerspective(viz_cam_points, h_mat, dsize=(1920, 1080))     ## Clearer
+        viz_pro_points = cv2.warpPerspective(viz_cam_points, global_h_mat, dsize=(1920, 1080))     ## Clearer
 
         print(cam_corners.shape)
 
