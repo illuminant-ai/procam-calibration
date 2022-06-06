@@ -110,5 +110,6 @@ def main():
     cv2.destroyAllWindows()     ## Why not: screen.destroyWindow() as there is only a single GUI.
     cap.release()
 
+
 if __name__=="__main__":
     main()
