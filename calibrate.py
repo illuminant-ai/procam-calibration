@@ -29,10 +29,15 @@ def main():
 
     parser.add_argument('proj_height', type=int, help='projector pixel height')
     parser.add_argument('proj_width', type=int, help='projector pixel width')
-    parser.add_argument('chess_vert', type=int,
-                        help='number of cross points of chessboard in vertical direction')
-    parser.add_argument('chess_hori', type=int,
-                        help='number of cross points of chessboard in horizontal direction')
+
+    # The following two arguments have been renamed from the less explicit names
+    # chess_vert and chess_hori to better suit its usage in the function
+    # findChessboardCorners. The description has also been changed appropriately.
+    parser.add_argument('chess_corners_row', type=int,
+                        help='number of inner corners per chessboard row')
+    parser.add_argument('chess_corners_col', type=int,
+                        help='number of inner corners per chessboard column')
+
     parser.add_argument('chess_block_size', type=float,
                         help='size of blocks of chessboard (mm or cm or m)')
     parser.add_argument('graycode_step', type=int,
@@ -46,7 +51,7 @@ def main():
     # Extract the command line arguments into variables.
     args = parser.parse_args()
     proj_shape = (args.proj_height, args.proj_width)        # shape = (height, width)
-    chess_shape = (args.chess_vert, args.chess_hori)
+    chess_shape = (args.chess_corners_row, args.chess_corners_col)
     chess_block_size = args.chess_block_size
     gc_step = args.graycode_step
     black_thr = args.black_thr
