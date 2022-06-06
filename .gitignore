@@ -1,0 +1,12 @@
+graycode_pattern/
+sample_data/
+capture_*/
+visualize_corners_projector_*
+viz_cam_corners_*
+viz_pro_corners_*
+viz_pro_gc_*
+
+.vscode/
+.DS_Store
+
+*.pyc
