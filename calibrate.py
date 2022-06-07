@@ -33,6 +33,8 @@ def main():
     # The following two arguments have been renamed from the less explicit names
     # chess_vert and chess_hori to better suit its usage in the function
     # findChessboardCorners. The description has also been changed appropriately.
+    # Refer to the docs https://docs.opencv.org/4.4.0/d9/d0c/group__calib3d.html#ga93efa9b0aa890de240ca32b11253dd4a
+    # for more details.
     parser.add_argument('chess_corners_row', type=int,
                         help='number of inner corners per chessboard row')
     parser.add_argument('chess_corners_col', type=int,
