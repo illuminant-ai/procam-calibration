@@ -72,7 +72,9 @@ def main():
     screen.imshow(black)
 
     # Capture a sequence of scenes with different graycode patterns projected.
-    ## flush_cap(cap)      ## Removed because imshowAndCapture flushes before capturing
+    ## SOL: The deletion of this line might be responsible for the very dark images
+    ## in the beginning of the captures.
+    flush_cap(cap)
     imlist = [imshowAndCapture(cap, pat, screen, 100) for pat in patterns]
 
     """
