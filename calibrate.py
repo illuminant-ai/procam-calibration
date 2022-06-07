@@ -49,6 +49,7 @@ def main():
     parser.add_argument('-white_thr', type=int, default=5,
                         help='threshold to specify robustness of graycode decoding (default : 5)')
     parser.add_argument('-camera', type=str, default=str(),help='camera internal parameter json file')
+    parser.add_argument('-patch', type=int, default=64, help='the patch size to compute local homography')
 
     # Extract the command line arguments into variables.
     args = parser.parse_args()
@@ -59,6 +60,7 @@ def main():
     black_thr = args.black_thr
     white_thr = args.white_thr
     camera_param_file = args.camera
+    patch_size = args.patch
 
     # Make sure there is at least one capture directory.
     dirnames = sorted(glob.glob('./capture_*'))
@@ -95,7 +97,7 @@ def main():
     # Calibrate the camera-projector system
     calibrate(used_dirnames, gc_fname_lists,
               proj_shape, chess_shape, chess_block_size, gc_step, black_thr, white_thr,
-              camP, cam_dist)
+              camP, cam_dist, patch_size)
 
 
 def printNumpyWithIndent(tar, indentchar):
@@ -112,7 +114,7 @@ def loadCameraParam(json_file):
         d = param_data['camera']['distortion']
         return np.array(P).reshape([3,3]), np.array(d)
 
-def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_size, gc_step, black_thr, white_thr, camP, camD):
+def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_size, gc_step, black_thr, white_thr, camP, camD, patch_size):
     # objps represent the calibration pattern points in the calibration pattern coordinate space.
     # Refer to https://docs.opencv.org/4.4.0/d9/d0c/group__calib3d.html#ga3207604e4b1a1758aa66acb6ed5aa65d.
     objps = np.zeros((chess_shape[0]*chess_shape[1], 3), np.float32)
@@ -135,8 +137,17 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
     # Comments: The patch size is a hyperparameter. If it's too small, it's sensitive to decoding
     #           errors. If it's too large, it's robust to errors but unable to cope with lens
     #           distortions. (Moreno et al.)    ## FIX
-    patch_size_half = 128        # int(np.ceil(cam_shape[1] / 15))       # = 1920 / 15 = 128
-    print('  patch size :', patch_size_half * 2)            # = 128 * 2 = 256
+    #
+    # Measurements of the patch size vs rms using a single capture
+    # Patch size        RMS
+    # 8                 1.09
+    # 16                1.086           <--- Optimal
+    # 32                1.089
+    # 64                1.096
+    # 128               1.115
+    # 256               1.15
+    patch_size_half = patch_size // 2
+    print('  patch size :', patch_size)
 
     # Create two lists of lists of corners, one in calibration pattern coordinates
     # (corners) and one in the coordinates of the image plane (objps), for the camera
