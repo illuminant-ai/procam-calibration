@@ -4,7 +4,7 @@ gen:
 cap:
 	python cap_chessboard.py
 
-calib:
+cal:
 	python calibrate.py 1080 1920 10 7 0.051 1 -camera camera_config.json
 
 clean:

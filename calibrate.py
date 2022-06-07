@@ -133,7 +133,7 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
     # Comments: The patch size is a hyperparameter. If it's too small, it's sensitive to decoding
     #           errors. If it's too large, it's robust to errors but unable to cope with lens
     #           distortions. (Moreno et al.)    ## FIX
-    patch_size_half = int(np.ceil(cam_shape[1] / 15))       # = 1920 / 15 = 128
+    patch_size_half = 128        # int(np.ceil(cam_shape[1] / 15))       # = 1920 / 15 = 128
     print('  patch size :', patch_size_half * 2)            # = 128 * 2 = 256
 
     # Create two lists of lists of corners, one in calibration pattern coordinates
@@ -274,7 +274,7 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
                     # it is, the larger this strip and the area of the pixel inferred by
                     # graycode.getProjPixel. A larger pixel area means the pixel coordinates
                     # will be scaled down accordingly, since we are working the same total area.
-                    # Muliplying with gc_step normalizes these coordinates back to match
+                    # Multiplying with gc_step normalizes these coordinates back to match
                     # the true pixel dimensions of the projector, in contrast to the pixel
                     # dimensions inferred from the graycode patterns.
                     err, proj_pix = graycode.getProjPixel(projected_graycodes, x, y)
