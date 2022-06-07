@@ -49,7 +49,9 @@ def main():
     parser.add_argument('-white_thr', type=int, default=5,
                         help='threshold to specify robustness of graycode decoding (default : 5)')
     parser.add_argument('-camera', type=str, default=str(),help='camera internal parameter json file')
-    parser.add_argument('-patch', type=int, default=64, help='the patch size to compute local homography')
+
+    # Helps in tuning the patch size for more accurate computation of local homography.
+    parser.add_argument('-patch', type=int, default=16, help='the patch size to compute local homography')
 
     # Extract the command line arguments into variables.
     args = parser.parse_args()
@@ -64,10 +66,7 @@ def main():
 
     # Make sure there is at least one capture directory.
     dirnames = sorted(glob.glob('./capture_*'))
-    if len(dirnames) == 0:
-        print('Directories \'./capture_*\' were not found')
-        return
-    ## Suggestion: assert len(dirnames) > 0, "Directories './capture_*' were not found."
+    assert len(dirnames) > 0, "Directories './capture_*' were not found."
 
     # Store non-empty capture directories and the graycode_* files in these directories
     # in the lists used_dirnames and gc_fname_lists.
@@ -245,6 +244,10 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
 
         cv2.imwrite('viz_pro_gc_' + str(dname_index) + '.png', image)
 
+        # Store the camera to projector corner decodings for calculation of global
+        # homography.
+        proj_corners_global, camera_corners_global = [], []
+
         # Loop through each inner chessboard corner in terms of its coordinate in the
         # image plane and the calibration pattern coordinate plane.
         for corner, objp in zip(cam_corners, objps):
@@ -252,6 +255,13 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
             c_y = int(round(corner[0][1]))
             src_points = []
             dst_points = []
+
+            # Calculate the camera to projector mapping for the corner for global
+            # homography calculation.
+            err, corner_pp = graycode.getProjPixel(projected_graycodes, c_x, c_y)
+            if not err:
+                camera_corners_global.append((c_x, c_y))
+                proj_corners_global.append(gc_step * np.array(corner_pp))
 
             # Loop through each pixel in the patch, the center of which is an inner
             # corner of the chessboard.
@@ -334,7 +344,10 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
 
         # Find the global homography matrix using the camera to projector pixel mapping
         # for the entire image, found earlier.
-        global_h_mat, _ = cv2.findHomography(np.array(camera_pixels), np.array(proj_pixels))
+        # Uncomment the following line to use the pixels in the entire image.
+        # global_h_mat, _ = cv2.findHomography(np.array(camera_pixels), np.array(proj_pixels))
+        # Uncomment the following line to use only the corner pixels.
+        global_h_mat, _ = cv2.findHomography(np.array(camera_corners_global), np.array(proj_corners_global))
 
         # Create the image plane of the projector from that of the camera using a
         # homography. As Phil correctly mentioned, this homography matrix used
@@ -368,17 +381,15 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
         # Currently, we are fixing the principal point of the camera, as well as the
         # distortions and the aspect ratio. The aspect ratio is perhaps meant to be
         # fixed, but the principal point should NOT be fixed.   ## FIX
-        cam_flags = cv2.CALIB_FIX_K1 | cv2.CALIB_FIX_K2| cv2.CALIB_FIX_K3 | cv2.CALIB_ZERO_TANGENT_DIST | cv2.CALIB_FIX_ASPECT_RATIO | cv2.CALIB_FIX_PRINCIPAL_POINT
+        # On closer inspection, this is not a problem, because we are loading in the
+        # camera intrinsics from the camera_config.json file, which dodges this
+        # problematic branch.
+        cam_flags = cv2.CALIB_FIX_ASPECT_RATIO
         ret, cam_int, cam_dist, cam_rvecs, cam_tvecs, _, _, cam_per_view_errors = cv2.calibrateCameraExtended(cam_objps_list, cam_corners_list, (1920, 1080), None, None, flags=cam_flags)
         print('Camera Shape: ', cam_shape)
         print('  RMS :', ret)
         print('  RMS Per View:', cam_per_view_errors)
     else:
-        for objp, corners in zip(cam_objps_list, cam_corners_list):
-            ret, cam_rvec, cam_tvec = cv2.solvePnP(objp, corners, camP, camD) 
-            cam_rvecs.append(cam_rvec)
-            cam_tvecs.append(cam_tvec)
-            print('  RMS :', ret)
         cam_int = camP
         cam_dist = camD
     print('  Intrinsic parameters :')
