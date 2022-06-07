@@ -6,6 +6,8 @@ viz_cam_corners_*
 viz_pro_corners_*
 viz_pro_gc_*
 
+experiments/
+
 .vscode/
 .DS_Store
 
