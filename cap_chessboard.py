@@ -71,10 +71,15 @@ def main():
     black = np.zeros(CAMERA_RESOLUTION)
     screen.imshow(black)
 
+    # This initial flushing of the images is necessary to avoid darker images
+    # at the beginning of the captures. Using a flush size seemed to produce
+    # the lowest rms error in one of the experiments, although this is not
+    # rigorous by any means.
+    FLUSHES = 2
+    for _ in range(FLUSHES):
+        flush_cap(cap)
+
     # Capture a sequence of scenes with different graycode patterns projected.
-    ## SOL: The deletion of this line might be responsible for the very dark images
-    ## in the beginning of the captures.
-    flush_cap(cap)
     imlist = [imshowAndCapture(cap, pat, screen, 100) for pat in patterns]
 
     """
