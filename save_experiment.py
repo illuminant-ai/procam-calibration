@@ -45,7 +45,7 @@ def main():
 
     # Create the new experiment directory.
     now = datetime.datetime.now()
-    experiment_dir = ".\\experiments\\e_" + now.strftime("%Y%m%d_%H%M%S") \
+    experiment_dir = ".\\experiments\\E" + now.strftime("%Y%m%d_%H%M%S") \
         if name is None else f".\\experiments\\{name}"
     os.mkdir(experiment_dir)
 

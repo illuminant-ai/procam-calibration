@@ -89,7 +89,7 @@ def main():
     _, ext = os.path.splitext(camera_param_file)
     if ext == ".json":
         camP, cam_dist = loadCameraParam(camera_param_file)
-        print('loading camera parameters')
+        print('Loading camera parameters')
         print(camP)
         print(cam_dist)
 
@@ -331,9 +331,12 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
 
         # Assert that at least three corners in the projector coordinate system are
         # able to be calculated.
-        if len(proj_corners) < 3:
-            print('Error : too few corners were found in \'' + dname + '\' (less than 3)')
-            return None
+        assert len(proj_corners) > 2, "Too few corners were found in '" + dname + "' (less than 3)"
+
+        # Save the projector corners to a single file (Using multiple files for different poses is
+        # likely unhelpful, because it is difficult to recreate poses with pixel-precision.
+        with open("pro_corners.npy", "wb") as corners_file:
+            np.save(corners_file, proj_corners)
 
         # Store the coordinates of the calculatable inner corners in terms of calibration
         # pattern coordinates, projector image plane coordinates and the camera image
@@ -357,8 +360,6 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
         # matrix for a global transformation is likely responsible for the inaccurate
         # corner markings in the viz_pro_corners_* files.       ## FIX
         viz_pro_points = cv2.warpPerspective(viz_cam_points, global_h_mat, dsize=(1920, 1080))     ## Clearer
-
-        print(cam_corners.shape)
 
         # Draw the chessboard corners in the camera and projector image planes and save
         # these marked image planes.
@@ -420,7 +421,7 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
     print('=== Result ===')
 
     # Calibrate the stereo camera/projector setup.
-    ste_flags = cv2.CALIB_FIX_INTRINSIC | cv2.CALIB_USE_INTRINSIC_GUESS     ## FIX: The latter flag is useless, given the former. Also, since the documentation suggests fixing the intrinsics, if we have found them us ing cameraCalibrate, we have more motivation to remove the second flag that does the opposite.
+    ste_flags = cv2.CALIB_FIX_INTRINSIC
     ret, cam_int, cam_dist, proj_int, proj_dist, cam_proj_rmat, cam_proj_tvec, E, F, ste_per_view_errors = cv2.stereoCalibrateExtended(proj_objps_list, cam_corners_list2, proj_corners_list, cam_int, cam_dist, proj_int, proj_dist, (1920, 1080), None, None, flags=ste_flags)     ## The image_size was previously unspecified (None), though not specifying it does not have any effect as the intrinsic matrices are already calculated. Refer to documentation here: https://docs.opencv.org/4.4.0/d9/d0c/group__calib3d.html#ga91018d80e2a93ade37539f01e6f07de5.
 
     print('  RMS :', ret)
@@ -443,6 +444,7 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
     fs = cv2.FileStorage('calibration_result.json', cv2.FILE_STORAGE_WRITE)
     fs.write('img_shape', cam_shape)
     fs.write('rms', ret)
+    fs.write('rms per view errors', ste_per_view_errors)
     fs.write('cam_int', cam_int)
     fs.write('cam_dist', cam_dist)
     fs.write('proj_int', proj_int)
