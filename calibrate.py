@@ -370,6 +370,9 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
 
     print('Initial solution of camera\'s intrinsic parameters')
 
+    # Termination criteria
+    term_criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_COUNT, 30, 0.001)
+
     # Perform camera calibration based on the coordinates of the inner chessboard
     # corners. The calibration methods differ based on whether the camera's parameters,
     # which are its intrinsic matrix and the distortions, are known beforehand.
@@ -403,13 +406,14 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
 
     # Calibrate the projector in the same way we calibrate the camera, using the
     # coordinates of the inner chessboard corners.
-    pro_flags = cv2.CALIB_FIX_K1 | cv2.CALIB_FIX_K2| cv2.CALIB_FIX_K3 | cv2.CALIB_ZERO_TANGENT_DIST
+    pro_flags = cv2.CALIB_FIX_K1 | cv2.CALIB_FIX_K2 | cv2.CALIB_FIX_K3 | cv2.CALIB_ZERO_TANGENT_DIST
     """
+    pro_flags = 0
     pro_flags = cv2.CALIB_FIX_K1 | cv2.CALIB_FIX_K2| cv2.CALIB_FIX_K3 | cv2.CALIB_ZERO_TANGENT_DIST | cv2.CALIB_FIX_ASPECT_RATIO | cv2.CALIB_FIX_PRINCIPAL_POINT
     pro_flags = cv2.CALIB_FIX_K1 | cv2.CALIB_FIX_K2| cv2.CALIB_FIX_K3 | cv2.CALIB_ZERO_TANGENT_DIST | cv2.CALIB_FIX_ASPECT_RATIO
     pro_flags = cv2.CALIB_FIX_K1 | cv2.CALIB_FIX_K2| cv2.CALIB_FIX_K3 | cv2.CALIB_ZERO_TANGENT_DIST | cv2.CALIB_FIX_PRINCIPAL_POINT
     """
-    ret, proj_int, proj_dist, proj_rvecs, proj_tvecs, _, _, pro_per_view_errors= cv2.calibrateCameraExtended(proj_objps_list, proj_corners_list, (1920, 1080), None, None, flags=pro_flags)
+    ret, proj_int, proj_dist, proj_rvecs, proj_tvecs, _, _, pro_per_view_errors= cv2.calibrateCameraExtended(proj_objps_list, proj_corners_list, (1920, 1080), None, None, flags=pro_flags, criteria=term_criteria)
     print('  RMS :', ret)
     print('  RMS :', pro_per_view_errors)
     print('  Intrinsic parameters :')
@@ -422,7 +426,7 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
 
     # Calibrate the stereo camera/projector setup.
     ste_flags = cv2.CALIB_FIX_INTRINSIC
-    ret, cam_int, cam_dist, proj_int, proj_dist, cam_proj_rmat, cam_proj_tvec, E, F, ste_per_view_errors = cv2.stereoCalibrateExtended(proj_objps_list, cam_corners_list2, proj_corners_list, cam_int, cam_dist, proj_int, proj_dist, (1920, 1080), None, None, flags=ste_flags)     ## The image_size was previously unspecified (None), though not specifying it does not have any effect as the intrinsic matrices are already calculated. Refer to documentation here: https://docs.opencv.org/4.4.0/d9/d0c/group__calib3d.html#ga91018d80e2a93ade37539f01e6f07de5.
+    ret, cam_int, cam_dist, proj_int, proj_dist, cam_proj_rmat, cam_proj_tvec, E, F, ste_per_view_errors = cv2.stereoCalibrateExtended(proj_objps_list, cam_corners_list2, proj_corners_list, cam_int, cam_dist, proj_int, proj_dist, (1920, 1080), None, None, flags=ste_flags, criteria=term_criteria)     ## The image_size was previously unspecified (None), though not specifying it does not have any effect as the intrinsic matrices are already calculated. Refer to documentation here: https://docs.opencv.org/4.4.0/d9/d0c/group__calib3d.html#ga91018d80e2a93ade37539f01e6f07de5.
 
     print('  RMS :', ret)
     print('  RMS :', ste_per_view_errors)
