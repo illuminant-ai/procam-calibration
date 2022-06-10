@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import glob
 import cv2
 import os.path
@@ -12,7 +14,7 @@ def get_valid_dirs():
     Fetches the list of valid capture directories. A directory is valid if it 
     is indexed and contains a depth.png and rgb.png file.
     """
-    dirs = sorted(glob.glob("./captures/cap_*"))
+    dirs = sorted(glob.glob("./captures/cap_*"), key=lambda d: int(d.split("_")[1]))
     valid_dirs = []
     for dir in dirs:
         if os.path.exists(f"{dir}/depth.png") and \
@@ -39,6 +41,7 @@ def visualize_corners(image, corners, label=""):
     cv2.drawChessboardCorners(colored_image, CHESS_SHAPE, corners, True)
     cv2.imshow(label, cv2.pyrDown(colored_image))
     cv2.waitKey(0)
+    cv2.destroyWindow(label)
 
 def load_camera_params(config_file):
     """
@@ -70,32 +73,34 @@ def main():
 
     valid_dirs = get_valid_dirs()
     for dir in valid_dirs:
-        print(f"Processing capture directory {dir}/")
+        print(f"Processing capture directory {dir}\\")
         depth_image, rgb_image = read_images(dir)
 
         # Find the chessboard corners in both images.
         depth_found, depth_corners = cv2.findChessboardCorners(depth_image, CHESS_SHAPE)
         rgb_found, rgb_corners = cv2.findChessboardCorners(rgb_image, CHESS_SHAPE)
 
-        # Assert that the chessboard is visible in both images.
-        assert depth_found, f"Chessboard not found in {dir}/depth.png"
-        assert rgb_found, f"Chessboard not found in {dir}/rgb.png"
+        # If the chessboard is not visible, skip the capture.
+        if not depth_found or not rgb_found:
+            print(f"SKIP: Chessboard not found in {dir}")
+            continue
 
         # Add the corners to the list of corners for each image.
         depth_corners_ls.append(depth_corners)
         rgb_corners_ls.append(rgb_corners)
     
         # Visualize the chessboard corners.
-        visualize_corners(depth_image, depth_corners, "depth")
-        visualize_corners(rgb_image, rgb_corners, "rgb")
+        visualize_corners(depth_image, depth_corners, f"Annotated {dir}\\depth")
+        visualize_corners(rgb_image, rgb_corners, f"Annotated {dir}\\rgb")
 
-    cal_points_ls = [cal_points] * len(valid_dirs)
+    processed_dir_count = len(depth_corners_ls)
+    cal_points_ls = [cal_points] * processed_dir_count
 
     # Load in the intrinsics of the depth camera.
     depth_int, depth_dist = load_camera_params("./camera_config.json")
 
     # Calibrate or find the intrinsics of the rgb camera independently.
-    flags = cv2.CALIB_FIX_ASPECT_RATIO
+    flags = cv2.CALIB_FIX_ASPECT_RATIO | cv2.CALIB_FIX_PRINCIPAL_POINT
     rgb_rms, rgb_int, rgb_dist, _, _, _, _, rgb_rms_per_view = \
         cv2.calibrateCameraExtended(cal_points_ls, rgb_corners_ls, \
             IMAGE_SIZE, None, None, flags=flags)
