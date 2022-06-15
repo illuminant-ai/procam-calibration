@@ -1,11 +1,6 @@
-/graycode_pattern/
-/sample_data/
-
-/capture_*/
-/viz_cam_corners_*
-/viz_pro_corners_*
-/viz_pro_gc_*
-/pro_corners.npy
+/graycode_patterns/
+/captures/
+/visualizations/
 /experiments
 
 /camera2camera/captures/

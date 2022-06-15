@@ -5,7 +5,7 @@ cap:
 	python cap_chessboard.py
 
 cal:
-	python calibrate.py 1080 1920 10 7 0.051 1 -camera camera_config.json
+	python calibrate.py 1080 1920 10 7 0.055 1 -camera camera_config.json
 
 clean:
-	rm -rf capture_*
+	rm -rf captures/*

@@ -13,17 +13,8 @@ import json
 def main():
     # Set up command line argument parsing.
     parser = argparse.ArgumentParser(
-        description='Calibrate pro-cam system using chessboard and structured light projection\n'
-        '  Place captured images as \n'
-        '    ./ --- capture_1/ --- graycode_00.png\n'
-        '        |              |- graycode_01.png\n'
-        '        |              |        .\n'
-        '        |              |        .\n'
-        '        |              |- graycode_??.png\n'
-        '        |- capture_2/ --- graycode_00.png\n'
-        '        |              |- graycode_01.png\n'
-        '        |      .       |        .\n'
-        '        |      .       |        .\n',
+        description='Calibrate pro-cam system using chessboard and structured light projection. \
+            Asserts that the structured light pattern images have been captured using cap_chessboard.py.',
         formatter_class=argparse.RawTextHelpFormatter
     )
 
@@ -65,8 +56,8 @@ def main():
     patch_size = args.patch
 
     # Make sure there is at least one capture directory.
-    dirnames = sorted(glob.glob('./capture_*'))
-    assert len(dirnames) > 0, "Directories './capture_*' were not found."
+    dirnames = sorted(glob.glob('./captures/capture_*'))
+    assert len(dirnames) > 0, "Directories './captures/capture_*' were not found."
 
     # Store non-empty capture directories and the graycode_* files in these directories
     # in the lists used_dirnames and gc_fname_lists.
@@ -81,7 +72,7 @@ def main():
             continue
         used_dirnames.append(dname)
         gc_fname_lists.append(gc_fnames)
-        print(' \'' + dname + '\' was found')
+        print("'" + os.path.normcase(dname) + "'" + 'was found')
 
     # Load the camera parameters which are the intrinsic matrix and the distortions.
     camP = None             # Camera Intrinsic Matrix
@@ -92,6 +83,10 @@ def main():
         print('Loading camera parameters')
         print(camP)
         print(cam_dist)
+
+    # Create a directory of visualizations if none exists yet.
+    if not os.path.exists("./visualizations"):
+        os.mkdir("./visualizations")
 
     # Calibrate the camera-projector system
     calibrate(used_dirnames, gc_fname_lists,
@@ -161,7 +156,7 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
     # Each directory is associated with a different pose of the image.
     for dname, gc_filenames in zip(dirnames, gc_fname_lists):
         dname_index = dname.split("_")[1]
-        print('  checking \'' + dname + '\'')
+        print("  checking '" + os.path.normcase(dname) + "'")
 
         # Assert the graycode_step parameter passed to the cap_chessboard.py equals the
         # one passed to this program.
@@ -242,7 +237,7 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
                     proj_pixels.append(gc_step * np.array(pp))
                     camera_pixels.append((col, row))
 
-        cv2.imwrite('viz_pro_gc_' + str(dname_index) + '.png', image)
+        cv2.imwrite('./visualizations/pro_gc_' + str(dname_index) + '.png', image)
 
         # Store the camera to projector corner decodings for calculation of global
         # homography.
@@ -335,7 +330,7 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
 
         # Save the projector corners to a single file (Using multiple files for different poses is
         # likely unhelpful, because it is difficult to recreate poses with pixel-precision.
-        with open("pro_corners.npy", "wb") as corners_file:
+        with open("visualizations/pro_corners.npy", "wb") as corners_file:
             np.save(corners_file, proj_corners)
 
         # Store the coordinates of the calculatable inner corners in terms of calibration
@@ -365,8 +360,8 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
         # these marked image planes.
         cv2.drawChessboardCorners(viz_cam_points, chess_shape, cam_corners, True)
         cv2.drawChessboardCorners(viz_pro_points, chess_shape, np.float32(proj_corners), True)
-        cv2.imwrite('viz_cam_corners_' + str(dname_index) + '.png', viz_cam_points)
-        cv2.imwrite('viz_pro_corners_' + str(dname_index) + '.png', viz_pro_points)
+        cv2.imwrite('./visualizations/cam_corners_' + str(dname_index) + '.png', viz_cam_points)
+        cv2.imwrite('./visualizations/pro_corners_' + str(dname_index) + '.png', viz_pro_points)
 
     print('Initial solution of camera\'s intrinsic parameters')
 
@@ -406,9 +401,9 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
 
     # Calibrate the projector in the same way we calibrate the camera, using the
     # coordinates of the inner chessboard corners.
-    pro_flags = cv2.CALIB_FIX_K1 | cv2.CALIB_FIX_K2 | cv2.CALIB_FIX_K3 | cv2.CALIB_ZERO_TANGENT_DIST
-    """
     pro_flags = 0
+    """
+    pro_flags = cv2.CALIB_FIX_K1 | cv2.CALIB_FIX_K2 | cv2.CALIB_FIX_K3 | cv2.CALIB_ZERO_TANGENT_DIST
     pro_flags = cv2.CALIB_FIX_K1 | cv2.CALIB_FIX_K2| cv2.CALIB_FIX_K3 | cv2.CALIB_ZERO_TANGENT_DIST | cv2.CALIB_FIX_ASPECT_RATIO | cv2.CALIB_FIX_PRINCIPAL_POINT
     pro_flags = cv2.CALIB_FIX_K1 | cv2.CALIB_FIX_K2| cv2.CALIB_FIX_K3 | cv2.CALIB_ZERO_TANGENT_DIST | cv2.CALIB_FIX_ASPECT_RATIO
     pro_flags = cv2.CALIB_FIX_K1 | cv2.CALIB_FIX_K2| cv2.CALIB_FIX_K3 | cv2.CALIB_ZERO_TANGENT_DIST | cv2.CALIB_FIX_PRINCIPAL_POINT

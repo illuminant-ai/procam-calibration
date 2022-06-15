@@ -23,7 +23,7 @@ python gen_graycode_imgs.py <projector_pixel_height> <projector_pixel_width> [-g
 python gen_graycode_imgs.py 768 1024 -graycode_step 1
 ```
 
-Generated images will be stored in `./graycode_pattern/`.
+Generated images will be stored in `./graycode_patterns/`.
 
 `graycode_step` is an option to specify the pixel size of bits in the gray code images.
 If you get moire pattern in the captured images in the next step, increase this variable.

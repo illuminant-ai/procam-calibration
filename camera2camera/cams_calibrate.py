@@ -14,7 +14,7 @@ def get_valid_dirs():
     Fetches the list of valid capture directories. A directory is valid if it 
     is indexed and contains a depth.png and rgb.png file.
     """
-    dirs = sorted(glob.glob("./captures/cap_*"), key=lambda d: int(d.split("_")[1]))
+    dirs = sorted(glob.glob("./captures/capture_*"), key=lambda d: int(d.split("_")[1]))
     valid_dirs = []
     for dir in dirs:
         if os.path.exists(f"{dir}/depth.png") and \
@@ -73,7 +73,7 @@ def main():
 
     valid_dirs = get_valid_dirs()
     for dir in valid_dirs:
-        print(f"Processing capture directory {dir}\\")
+        print(f"Processing capture directory {os.path.normcase(dir)}\\")
         depth_image, rgb_image = read_images(dir)
 
         # Find the chessboard corners in both images.
@@ -82,7 +82,7 @@ def main():
 
         # If the chessboard is not visible, skip the capture.
         if not depth_found or not rgb_found:
-            print(f"SKIP: Chessboard not found in {dir}")
+            print(f"SKIP: Chessboard not found in {os.path.normcase(dir)}")
             continue
 
         # Add the corners to the list of corners for each image.

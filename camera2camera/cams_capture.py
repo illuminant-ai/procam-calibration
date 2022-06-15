@@ -39,14 +39,16 @@ def save(depth_image, rgb_image):
     RGB -- into an indexed capture directory.
     """
     def get_next_directory():
-        dirs = sorted(glob.glob("./captures/cap_*"), key=lambda x: int(x.split("_")[1]))
-        recent = "./captures/cap_-1" if len(dirs) == 0 else dirs[-1]
+        dirs = sorted(glob.glob("./captures/capture_*"), key=lambda x: int(x.split("_")[1]))
+        recent = "./captures/capture_-1" if len(dirs) == 0 else dirs[-1]
         recent_index = int(recent.split("_")[1])
         next_index = recent_index + 1
-        return f"./captures/cap_{next_index}"
+        return f"./captures/capture_{next_index}"
 
+    if not os.path.exists("./captures"):
+        os.mkdir("./captures")
     dir = get_next_directory()
-    print(f"Saving images to the capture director {dir} ...")
+    print(f"Saving images to the capture director {os.path.normcase(dir)} ...")
     os.mkdir(dir)
     cv2.imwrite(f"{dir}/depth.png", depth_image)
     cv2.imwrite(f"{dir}/rgb.png", rgb_image)

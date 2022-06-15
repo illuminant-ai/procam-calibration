@@ -7,8 +7,7 @@ import cv2
 import numpy as np
 import math
 
-TARGETDIR = './graycode_pattern'
-CAPTUREDDIR = './capture_*'
+TARGETDIR = './graycode_patterns'
 
 def main():
     # Setup command line argument parsing.
@@ -61,25 +60,6 @@ def main():
     print('=== Result ===')
     print('\'' + TARGETDIR + '/pattern_00.png ~ pattern_' +
           str(len(exp_patterns)-1) + '.png \' were generated')
-    print()
-    print('=== Next step ===')
-    print('Project patterns and save captured images as \'' +
-          CAPTUREDDIR + '/graycode_*.png\'')
-    print()
-    print(
-        '    ./ --- capture_1/ --- graycode_00.png\n'
-        '        |              |- graycode_01.png\n'
-        '        |              |        .\n'
-        '        |              |        .\n'
-        '        |              |- graycode_' +
-        str(len(exp_patterns)-1) + '.png\n'
-        '        |- capture_2/ --- graycode_00.png\n'
-        '        |              |- graycode_01.png\n'
-        '        |      .       |        .\n'
-        '        |      .       |        .\n')
-    print()
-    print('It is recommended to capture more than 5 times')
-    print()
 
 
 if __name__ == '__main__':

@@ -5,7 +5,8 @@ CAMERA_RESOLUTION = (1920, 1080)
 VISUALIZED_PIXEL_SIZE = 8
 
 def main():
-    with open("pro_corners.npy", "rb") as corners_file:
+    # Load the corners information from a file.
+    with open("visualizations/pro_corners.npy", "rb") as corners_file:
         corners = np.load(corners_file)
 
     # Remove the extra middle dimension as in n x 1 x 2
