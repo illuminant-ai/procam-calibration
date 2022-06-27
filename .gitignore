@@ -1,9 +1,12 @@
-graycode_pattern/
-capture_*/
-visualize_corners_projector_*
-viz_cam_corners_*
-viz_pro_corners_*
-viz_pro_gc_*
+/graycode_patterns/
+/captures/
+/visualizations/
+/experiments
+
+/camera2camera/captures/
+/camera2camera/results/
+
 .vscode/
+.DS_Store
 
 *.pyc

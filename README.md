@@ -1,78 +1,174 @@
 # procam-calibration
 
-This repository provides python scripts to calibrate projector-camera system using a chessboard and structured light (the gray codes).
+`procam-calibration` is a repository of tools necessary to perform
+projector-camera calibration. This refers to finding the intrinsic parameters
+of the projector and the camera, and the extrinsic parameters linking these
+two optical components.
 
-## Requirement
+At a high level, projector-camera calibration consists of the following steps
+which are encapsulated in our scripts.
+  - Capture sets of pattern-projected images of a chessboard target, each set
+    corresponding to a unique orientation (including position) of the
+    chessboard target.
+  - Find the chessboard corners of the target for each set of images.
+  - Use these chessboard corners to find the intrinsic matrix of the camera.
+    *This step is only necessary if the intrinsic parameters of the camera are
+    unknown.*
+  - Transform the corners to the projector point of view by using the
+    structured light patterns and local homographies.
+  - Use the computed chessboard corners in the projector view to find the
+    intrinsic matrix of the projector.
+  - Use the point-to-point correspondences (in this case, chessboard corner
+    points) between the camera and projector to find the extrinsic matrix of
+    the projector-camera (stereo) system.
 
-* Python
-    * Python 3 is recommended
-* OpenCV
-    * `python -m pip install opencv-python opencv-contrib-python`
-* Printed chessboard
-    * You can find PDF [here](http://opencv.jp/sample/pics/chesspattern_7x10.pdf)
+This `README` will guide you through how to perform good, consistent calibrations.
 
-## How to use
-### Step 1 : Generate gray code patterns
+## Prerequisites
 
-Open your terminal and type the following command.
+### Python 3
+The scripts are developed and tested with Python 3.9.10, and thus, we encourage
+you to use Python versions above 3.9.
 
-```sh
-python gen_graycode_imgs.py <projector_pixel_height> <projector_pixel_width> [-graycode_step <graycode_step(default=1)>]
-
-# example
-python gen_graycode_imgs.py 768 1024 -graycode_step 1
+### OpenCV 4.4.0
+Install the full OpenCV package that also contains the contribution and extra
+modules, instead of the one that only contains the main module. This is due to
+the structured light module not being included in the main OpenCV module.
+```
+pip install opencv-contrib-python==4.4.0.46
 ```
 
-Generated images will be stored in `./graycode_pattern/`.
+### Chessboard Target
+The chessboard target should ideally be planar, contain a decent amount of
+padding around the chessboard pattern, and have one of its dimensions odd to
+distinguish the patterns under rotations. For instance, our chessboard target
+has dimensions 10 x 7, i.e., there are 10 squares horizontally and 7 squares
+vertically.
 
-`graycode_step` is an option to specify the pixel size of bits in the gray code images.
-If you get moire pattern in the captured images in the next step, increase this variable.
+For maximum planarity, use high-quality targets manufactured by [foamcoreprint](
+  https://www.foamcoreprint.com/
+) or [calib.io](https://calib.io/). Otherwise, you can print a chessboard
+pattern at [Staples](https://www.staples.com/), glue them onto a portable, flat
+surface and use it as a calibration target.
 
-### Step 2 : Project and capture the gray code patterns
 
-Set up your system and place a chessboard in front of the projector and camera.
-Then, project the gray code patterns generated in the previous step from the projector to it and capture it from the camera.
+## Procedure
 
-Although minimum required shot is one, it is recommended to capture more than 5 times with different attitudes of the chessboard to improve the calibration accuracy.
+### 1. Generate graycode patterns
 
-Captured images must be saved as `./capture_*/graycode_*.(png/jpg)`.
+We need to pre-generate the graycode patterns that will be projected onto the
+chessboard before the capture process. This generation is done by
+`gen_graycode_imgs.py`, which populates the local `./graycode_patterns`
+directory with the patterns. The format of the script is
+```
+python gen_graycode_imgs.py <h> <w> [-graycode_step <step=1>]
+```
+`h` refers to the height and `w` to the width component of the resolution of
+the projector. The optional argument `step` refers to the number of
+projector pixels the highest-frequency strip of the graycode pattern spans.
+The lower this value is, the finer and more detailed the graycode patterns and
+the better the accuracy of the decoding from the graycode patterns. As such,
+this parameter should be set to its lowest value: $1$ which is also the default.
+Increase this value only in the rare circumstance where Moire patterns emerge
+from the projection of the graycode patterns.
 
-<table>
-   <tr>
-      <td><img src="./sample_data/capture_0/graycode_40.png"></td>
-      <td><img src="./sample_data/capture_0/graycode_15.png"></td>
-   </tr>
-</table>
+### 2. Capture twenty sets of pattern-projected images
 
-### Step 3 : Calibrate projector & camera parameters
-
-After saving the captured images, run the following command.
-
-```sh
-python calibrate.py <projector_pixel_height> <projector_pixel_width> <num_chess_corners_vert> <num_chess_corners_hori> <chess_block_size> <graycode_step> [-black_thr <black_thr(default=40)>] [-white_thr <white_thr(default=5)>][-camera <camera_parameter_json>]
-
-# example (you can test this command in the sample_data directory)
-python ../calibrate.py 768 1024 9 7 75 1 -black_thr 40 -white_thr 5
+The script `cap_chessboard.py` projects the graycode patterns previously
+generated by `gen_graycode_imgs.py`, takes a capture for
+each projection corresponding to a unique pattern, and lastly, organizes the
+captures named `graycode_<n>.png` into a directory named `capture_<n>` under
+the top-level directory `captures`. It accepts zero arguments, so you can
+simply invoke the script as
+```
+python cap_chessboard.py
 ```
 
-`chess_block_size` means the length (mm cm m) of a block on the chessboard.
-The translation vectors will be calculated with the units of length used here.
+#### Critical Heuristics
+Now, we address the critical heuristics of the calibration process. Ignoring
+these heuristics may lead to unstable or lower-quality calibrations. 
 
-`black_threashold` is a threashold to determine whether a camera pixel captures projected area or not.
-`white_threashold` is a threashold to specify the robustness of gray code decoding.
-To avoid decoding errors, increase these variables.
+First, we address heuristics related to projector and camera settings.
+- Adjust the focus of the projector, so that the projection on the chessboard
+  target is high-resolution. If the projector has an auto-focus feature, turn
+  it off.
+- Adjust the keystone correction settings of the projector to produce an
+  approximately rectilinear projection on the chessboard target.
+- Turn off auto-focus, auto-exposure and auto white-balance settings on the
+  camera. In general, all auto-features on the camera should be disabled
+  prior to capture.
+- After disabling auto-exposure, adjust the exposure so that the resultant
+  image is not bright. In fact, it's okay for the image to be on the dark end
+  of the brightness spectrum as long as it's visible.
 
-`camera_paramter_json` is a json file, in which internal camera paramters (projection matrix P, camera distortion, and image size) are written.
-By indicating this option, the intrinsic camera parameters will be fixed when compute the initial solution of the camera attitudes.
-See "camera_config.json" as an example.
+Second, we address heuristics for the orientation of the chessboard target. The
+target should be oriented at different angles and positioned at different areas
+of the camera image plane. The presence of oblique angles in the image block
+is important, but according to our observations, the targets should not be
+slanted more than 45 degrees. Rotation of the target is also equally important
+for a high-quality image block. (Image block refers to the set of chessboard
+poses.)
 
-Calibration result will be displayed on your terminal and saved in `./calibration_result.xml` (with cv::FileStorage format).
+### 3. Calibrate the projector-camera system
 
-## Additional Resource
-
-This software calculates local homographies at around chessboard corners to estimate corresponding projector pixels with subpixel accuracy.
-This algorithm is based on the following paper.
-
+After constructing the image block following the instructions in Step 2, we
+can finally proceed to calibrate the projector-camera system. This calibration
+process is done by the script `calibrate.py`. The internal workings of this
+script are summarized by all but the first bullet point in the [overview](
+#procam-calibration) of this repository. The format of the script is
 ```
-MORENO, Daniel; TAUBIN, Gabriel. Simple, accurate, and robust projector-camera calibration. In: 3D Imaging, Modeling, Processing, Visualization and Transmission (3DIMPVT), 2012 Second International Conference on. IEEE, 2012. p. 464-471.
+python calibrate.py <h> <w> <cr> <cc> <step> [-black_thr <bl=40>] [-white_thr <wt=5>] [-camera <config="">] [-patch <p=16>]
 ```
+The parameters `h`, `w` and `step` should have the same values as the ones
+specified to `gen_graycode_imgs.py`, as they have the same context here. To
+re-iterate, `h` refers to the height and `w` to the width component of the 
+resolution of the projector. `step` refers to the number of projector pixels
+the highest-frequency strip of the graycode pattern spans. `cr` and `cc` refer
+to the number of inner corners per chessboard row and column respectively. `bl`
+and `wt` aer parameters controlling the structured light patterns. More
+specifically, `bl` is a number between 0-255 that represents the minimum
+brightness difference required for valid pixels, between the fully illuminated 
+(white) and the not illuminated images (black) and `wt` is a number between
+0-255 that represents the minimum brightness difference required for valid
+pixels, between the graycode pattern and its inverse images. Unless you are
+completely certain, these parameters are better set to their default values.
+`config` is a path to a JSON file containing the intrinsic parameters of the
+camera if such information is known. `patch` represents the patch size around
+the corners used in the computation of the local homography for projector
+corner finding.
+
+This script produces a `calibration_result.json` file that contains the
+intrinsic parameters of the camera and the projector, as well as the extrinsic
+matrix relating the two. This file is suitable for consumption by Lux.
+
+This script also outputs visualization data for debugging under the folder
+`visualizations/`. The `cam_corners_<n>.png` contains the camera image with the
+chessboard corners marked, while `pro_corners<n>.png` contains the same for
+the projector image. The sole `pro_corners.npy` file contains information
+necessary to project the chessboard corners from the projector onto the scene
+using the script `project_corners.py`. This was only used to ensure that the
+projector corner finding component was running correctly.
+
+## Saving Experiments
+
+You can save an entire calibration experiment, including the captures,
+visualizations and the final `calibration_result.json` file using the script
+`save_experiment.py`. It packages all the data related to the experiment into
+a single experiment directory and saves it under the `experiments/` directory.
+The format of this script is
+```
+python save_experiment.py [-name <name>]
+```
+If the optional argument `name` is unspecified, the script names the
+experiment directory based on the current time.
+
+## References
+
+- [Simple, Accurate, and Robust Projector-Camera Calibration](http://mesh.brown.edu/calibration/files/Simple,%20Accurate,%20and%20Robust%20Projector-Camera%20Calibration.pdf)
+- [Capture Guidelines by Moreno et al.](http://mesh.brown.edu/calibration/software.html#:~:text=Adjusting%20the%20system,the%20object%20surface.)
+- [Stability Analysis of Intrinsic Camera Calibration Results](
+  https://iopscience.iop.org/article/10.1088/1757-899X/1048/1/012010/pdf
+)
+- [Calibration Best Practices by calib.io](
+  https://calib.io/blogs/knowledge-base/calibration-best-practices
+)
