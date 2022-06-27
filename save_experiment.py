@@ -26,10 +26,10 @@ def main():
 
     # Check that all the relevant experiment information exist. These include
     # the capture and visualization directories, as well as the results file.
-    assert os.path.exists("./captures", "Top-level capture directory \
-        not found.")
-    assert os.path.exists("./visualizations", "Top-level visualizations \
-        directory not found.")
+    assert os.path.exists("./captures"), "Top-level capture directory \
+        not found."
+    assert os.path.exists("./visualizations"), "Top-level visualizations \
+        directory not found."
     assert os.path.exists("./calibration_result.json"), \
         "No calibration result file was found."
 
@@ -40,7 +40,7 @@ def main():
     os.mkdir(experiment_dir)
 
     # Store the items in the experiment directory.
-    shutil.copytree("./capture", f"{experiment_dir}/capture")
+    shutil.copytree("./captures", f"{experiment_dir}/captures")
     shutil.copytree("./visualizations", f"{experiment_dir}/visualizations")
     shutil.copy("./calibration_result.json", experiment_dir)
 

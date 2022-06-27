@@ -5,6 +5,7 @@ import os
 import os.path
 import glob
 import argparse
+import shutil
 import cv2
 import numpy as np
 import json
@@ -56,7 +57,7 @@ def main():
     patch_size = args.patch
 
     # Make sure there is at least one capture directory.
-    dirnames = sorted(glob.glob('./captures/capture_*'))
+    dirnames = sorted(glob.glob('./captures/capture_*'), key=lambda x: int(x.split("_")[1]))
     assert len(dirnames) > 0, "Directories './captures/capture_*' were not found."
 
     # Store non-empty capture directories and the graycode_* files in these directories
@@ -84,9 +85,10 @@ def main():
         print(camP)
         print(cam_dist)
 
-    # Create a directory of visualizations if none exists yet.
-    if not os.path.exists("./visualizations"):
-        os.mkdir("./visualizations")
+    # Reset the visualizations directory.
+    if os.path.exists("./visualizations"):
+        shutil.rmtree("./visualizations")
+    os.mkdir("./visualizations")
 
     # Calibrate the camera-projector system
     calibrate(used_dirnames, gc_fname_lists,
@@ -326,7 +328,9 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
 
         # Assert that at least three corners in the projector coordinate system are
         # able to be calculated.
-        assert len(proj_corners) > 2, "Too few corners were found in '" + dname + "' (less than 3)"
+        if len(proj_corners) <= 2:
+            print("Skipping: Too few corners were found in '" + dname + "' (less than 3)")
+            continue
 
         # Save the projector corners to a single file (Using multiple files for different poses is
         # likely unhelpful, because it is difficult to recreate poses with pixel-precision.
@@ -374,8 +378,6 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
     #   Note: For both methods, the rotation matrices and translation vectors are
     #         computed for each pose. On the other hand, the intrinsic matrix and the
     #         distortions are computed based on all poses.
-    cam_rvecs = []
-    cam_tvecs = []
     if camP is None:
         # Currently, we are fixing the principal point of the camera, as well as the
         # distortions and the aspect ratio. The aspect ratio is perhaps meant to be
@@ -384,7 +386,7 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
         # camera intrinsics from the camera_config.json file, which dodges this
         # problematic branch.
         cam_flags = cv2.CALIB_FIX_ASPECT_RATIO
-        ret, cam_int, cam_dist, cam_rvecs, cam_tvecs, _, _, cam_per_view_errors = cv2.calibrateCameraExtended(cam_objps_list, cam_corners_list, (1920, 1080), None, None, flags=cam_flags)
+        ret, cam_int, cam_dist, _, _, _, _, cam_per_view_errors = cv2.calibrateCameraExtended(cam_objps_list, cam_corners_list, (1920, 1080), None, None, flags=cam_flags)
         print('Camera Shape: ', cam_shape)
         print('  RMS :', ret)
         print('  RMS Per View:', cam_per_view_errors)
@@ -401,14 +403,7 @@ def calibrate(dirnames, gc_fname_lists, proj_shape, chess_shape, chess_block_siz
 
     # Calibrate the projector in the same way we calibrate the camera, using the
     # coordinates of the inner chessboard corners.
-    pro_flags = 0
-    """
-    pro_flags = cv2.CALIB_FIX_K1 | cv2.CALIB_FIX_K2 | cv2.CALIB_FIX_K3 | cv2.CALIB_ZERO_TANGENT_DIST
-    pro_flags = cv2.CALIB_FIX_K1 | cv2.CALIB_FIX_K2| cv2.CALIB_FIX_K3 | cv2.CALIB_ZERO_TANGENT_DIST | cv2.CALIB_FIX_ASPECT_RATIO | cv2.CALIB_FIX_PRINCIPAL_POINT
-    pro_flags = cv2.CALIB_FIX_K1 | cv2.CALIB_FIX_K2| cv2.CALIB_FIX_K3 | cv2.CALIB_ZERO_TANGENT_DIST | cv2.CALIB_FIX_ASPECT_RATIO
-    pro_flags = cv2.CALIB_FIX_K1 | cv2.CALIB_FIX_K2| cv2.CALIB_FIX_K3 | cv2.CALIB_ZERO_TANGENT_DIST | cv2.CALIB_FIX_PRINCIPAL_POINT
-    """
-    ret, proj_int, proj_dist, proj_rvecs, proj_tvecs, _, _, pro_per_view_errors= cv2.calibrateCameraExtended(proj_objps_list, proj_corners_list, (1920, 1080), None, None, flags=pro_flags, criteria=term_criteria)
+    ret, proj_int, proj_dist, _, _, _, _, pro_per_view_errors= cv2.calibrateCameraExtended(proj_objps_list, proj_corners_list, (1920, 1080), None, None, criteria=term_criteria)
     print('  RMS :', ret)
     print('  RMS :', pro_per_view_errors)
     print('  Intrinsic parameters :')

@@ -46,7 +46,7 @@ def main():
     If your computer already has a webcam, the index of the externally linked
     camera may be 1 instead of 0.
     """
-    cap = cv2.VideoCapture(2)       # Index of the camera
+    cap = cv2.VideoCapture(1)       # Index of the camera
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, CAMERA_RESOLUTION[0])
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, CAMERA_RESOLUTION[1])
    
